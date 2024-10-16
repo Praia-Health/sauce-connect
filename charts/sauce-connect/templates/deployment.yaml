@@ -34,6 +34,13 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           env:
+            {{- range .Values.env }}
+            - name: {{ .name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .secretName }}
+                  key: {{ .secretKey }}
+            {{- end }}
             - name: SAUCE_CONFIG_FILE
               value: /etc/config/sauce-connect.yaml
             - name: SAUCE_API_ADDRESS
@@ -51,6 +58,11 @@ spec:
                   resource: limits.memory
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           volumeMounts:
+            {{- range .Values.volumeMounts }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+              readOnly: {{ .readOnly | default true }}
+            {{- end }}
             - name: config-volume
               mountPath: /etc/config
           ports:
@@ -73,6 +85,14 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
+        {{- range .Values.volumes }}
+        - name: {{ .name }}
+          csi:
+            driver: {{ .driver }}
+            readOnly: {{ .readOnly | default true }}
+            volumeAttributes:
+              secretProviderClass: {{ .secretProviderClass }}
+        {{- end }}
         - name: config-volume
           configMap:
             name: {{ include "sauce-connect.fullname" . }}
@@ -89,3 +109,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      
